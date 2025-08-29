@@ -43,50 +43,48 @@ export class ThermalPrinter {
 
   async connect(): Promise<boolean> {
     try {
+      console.log('🔍 Checking Bluetooth availability...');
+      
       if (!navigator.bluetooth) {
-        throw new Error('Bluetooth tidak didukung. Aktifkan Web Bluetooth di Chrome://flags');
+        console.error('❌ Web Bluetooth API not available');
+        throw new Error('Web Bluetooth tidak didukung. Aktifkan "Experimental Web Platform features" di chrome://flags');
       }
 
       // Check if we're on Android Chrome for better support
       const isAndroidChrome = /Android.*Chrome/.test(navigator.userAgent);
+      const isHTTPS = location.protocol === 'https:';
+      
+      console.log('📱 User Agent:', navigator.userAgent);
+      console.log('🔒 HTTPS:', isHTTPS);
+      console.log('🤖 Android Chrome:', isAndroidChrome);
+      
+      if (!isHTTPS && location.hostname !== 'localhost') {
+        throw new Error('Bluetooth memerlukan HTTPS atau localhost untuk bekerja');
+      }
       
       if (isAndroidChrome) {
-        console.log('Android Chrome detected - using optimized settings');
+        console.log('✅ Android Chrome detected - using optimized settings');
+      } else {
+        console.warn('⚠️ Non-Android Chrome browser detected - Bluetooth support may be limited');
       }
 
       // More comprehensive device filters for Android compatibility
       const requestOptions = {
-        filters: [
-          // Thermal printer services
-          { services: ['000018f0-0000-1000-8000-00805f9b34fb'] },
-          { services: ['49535343-fe7d-4ae5-8fa9-9fafd205e455'] }, // HM-10 module
-          
-          // Common printer name prefixes (case insensitive)
-          { namePrefix: 'MTP' },
-          { namePrefix: 'POS' },
-          { namePrefix: 'EPSON' },
-          { namePrefix: 'STAR' },
-          { namePrefix: 'BIXOLON' },
-          { namePrefix: 'CITIZEN' },
-          { namePrefix: 'TM-' },
-          { namePrefix: 'TSP' },
-          { namePrefix: 'BlueTooth' },
-          { namePrefix: 'BT' },
-          
-          // Generic thermal printer patterns
-          { namePrefix: 'Thermal' },
-          { namePrefix: 'Receipt' },
-          { namePrefix: 'Printer' },
-        ],
+        acceptAllDevices: true, // Accept any Bluetooth device
         optionalServices: [
-          '000018f0-0000-1000-8000-00805f9b34fb',
-          '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+          '000018f0-0000-1000-8000-00805f9b34fb', // Thermal printer service
+          '49535343-fe7d-4ae5-8fa9-9fafd205e455', // HM-10 module
           '0000ff00-0000-1000-8000-00805f9b34fb', // Custom service UUID
-          '6e400001-b5a3-f393-e0a9-e50e24dcca9e'  // Nordic UART Service
+          '6e400001-b5a3-f393-e0a9-e50e24dcca9e', // Nordic UART Service
+          '0000180f-0000-1000-8000-00805f9b34fb', // Battery Service
+          '0000180a-0000-1000-8000-00805f9b34fb', // Device Information Service
+          '00001800-0000-1000-8000-00805f9b34fb', // Generic Access Service
+          '00001801-0000-1000-8000-00805f9b34fb'  // Generic Attribute Service
         ]
       };
 
-      console.log('Scanning for Bluetooth printers...');
+      console.log('🔍 Scanning for ALL Bluetooth devices...');
+      console.log('📋 Request options:', requestOptions);
       this.device = await navigator.bluetooth.requestDevice(requestOptions);
 
       if (!this.device.gatt) {
