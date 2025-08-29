@@ -28,7 +28,7 @@ export const ManualInvoice = ({ onCreateInvoice, formatPrice, receipts }: Manual
   const [items, setItems] = useState<ManualItem[]>([]);
   const [currentItem, setCurrentItem] = useState({
     name: '',
-    quantity: 1,
+    quantity: 0,
     unitPrice: 0
   });
   const [paymentMethod, setPaymentMethod] = useState('cash');
@@ -36,8 +36,8 @@ export const ManualInvoice = ({ onCreateInvoice, formatPrice, receipts }: Manual
   const [discountType, setDiscountType] = useState<'amount' | 'percent'>('amount');
 
   const addItem = () => {
-    if (!currentItem.name || currentItem.unitPrice <= 0) {
-      toast.error('Nama barang dan harga harus diisi!');
+    if (!currentItem.name || currentItem.unitPrice <= 0 || currentItem.quantity <= 0) {
+      toast.error('Nama barang, jumlah, dan harga harus diisi!');
       return;
     }
 
@@ -50,7 +50,7 @@ export const ManualInvoice = ({ onCreateInvoice, formatPrice, receipts }: Manual
     };
 
     setItems(prev => [...prev, newItem]);
-    setCurrentItem({ name: '', quantity: 1, unitPrice: 0 });
+    setCurrentItem({ name: '', quantity: 0, unitPrice: 0 });
   };
 
   const removeItem = (id: string) => {
@@ -117,7 +117,7 @@ export const ManualInvoice = ({ onCreateInvoice, formatPrice, receipts }: Manual
     
     // Reset form
     setItems([]);
-    setCurrentItem({ name: '', quantity: 1, unitPrice: 0 });
+    setCurrentItem({ name: '', quantity: 0, unitPrice: 0 });
     setDiscount(0);
     setPaymentMethod('cash');
     
@@ -152,9 +152,9 @@ export const ManualInvoice = ({ onCreateInvoice, formatPrice, receipts }: Manual
                 <Input
                   id="quantity"
                   type="number"
-                  min="1"
+                  min="0"
                   value={currentItem.quantity || ''}
-                  onChange={(e) => setCurrentItem(prev => ({ ...prev, quantity: Number(e.target.value) || 1 }))}
+                  onChange={(e) => setCurrentItem(prev => ({ ...prev, quantity: Number(e.target.value) || 0 }))}
                 />
               </div>
               <div>
