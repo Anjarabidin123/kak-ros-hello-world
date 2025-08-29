@@ -8,6 +8,8 @@ declare global {
   
   interface BluetoothDevice {
     gatt?: BluetoothRemoteGATT;
+    name?: string;
+    id: string;
   }
   
   interface BluetoothRemoteGATT {
@@ -42,49 +44,106 @@ export class ThermalPrinter {
   async connect(): Promise<boolean> {
     try {
       if (!navigator.bluetooth) {
-        throw new Error('Bluetooth not supported');
+        throw new Error('Bluetooth tidak didukung. Aktifkan Web Bluetooth di Chrome://flags');
       }
 
-      this.device = await navigator.bluetooth.requestDevice({
+      // Check if we're on Android Chrome for better support
+      const isAndroidChrome = /Android.*Chrome/.test(navigator.userAgent);
+      
+      if (isAndroidChrome) {
+        console.log('Android Chrome detected - using optimized settings');
+      }
+
+      // More comprehensive device filters for Android compatibility
+      const requestOptions = {
         filters: [
-          { services: ['000018f0-0000-1000-8000-00805f9b34fb'] }, // Generic thermal printer service
-          { namePrefix: 'MTP-' }, // Common thermal printer prefix
-          { namePrefix: 'POS-' },
+          // Thermal printer services
+          { services: ['000018f0-0000-1000-8000-00805f9b34fb'] },
+          { services: ['49535343-fe7d-4ae5-8fa9-9fafd205e455'] }, // HM-10 module
+          
+          // Common printer name prefixes (case insensitive)
+          { namePrefix: 'MTP' },
+          { namePrefix: 'POS' },
           { namePrefix: 'EPSON' },
           { namePrefix: 'STAR' },
+          { namePrefix: 'BIXOLON' },
+          { namePrefix: 'CITIZEN' },
+          { namePrefix: 'TM-' },
+          { namePrefix: 'TSP' },
+          { namePrefix: 'BlueTooth' },
+          { namePrefix: 'BT' },
+          
+          // Generic thermal printer patterns
+          { namePrefix: 'Thermal' },
+          { namePrefix: 'Receipt' },
+          { namePrefix: 'Printer' },
         ],
-        optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb', '49535343-fe7d-4ae5-8fa9-9fafd205e455']
-      });
+        optionalServices: [
+          '000018f0-0000-1000-8000-00805f9b34fb',
+          '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+          '0000ff00-0000-1000-8000-00805f9b34fb', // Custom service UUID
+          '6e400001-b5a3-f393-e0a9-e50e24dcca9e'  // Nordic UART Service
+        ]
+      };
+
+      console.log('Scanning for Bluetooth printers...');
+      this.device = await navigator.bluetooth.requestDevice(requestOptions);
 
       if (!this.device.gatt) {
         throw new Error('GATT not available');
       }
 
-      const server = await this.device.gatt.connect();
+      console.log(`Connecting to device: ${this.device.name || 'Unknown'}`);
+      
+      // Add connection timeout for mobile stability
+      const connectionPromise = this.device.gatt!.connect();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Connection timeout')), 15000)
+      );
+      
+      const server = await Promise.race([connectionPromise, timeoutPromise]) as BluetoothRemoteGATTServer;
       console.log('Connected to Bluetooth printer');
 
-      // Try common service UUIDs
+      // Get all available services
       const services = await server.getPrimaryServices();
-      console.log('Available services:', services);
+      console.log(`Found ${services.length} services:`, services.map(s => s.uuid));
 
+      // Try to find a writable characteristic
       for (const service of services) {
         try {
+          console.log(`Checking service: ${service.uuid}`);
           const characteristics = await service.getCharacteristics();
+          
           for (const char of characteristics) {
+            console.log(`Characteristic: ${char.uuid}, Properties:`, {
+              write: char.properties.write,
+              writeWithoutResponse: char.properties.writeWithoutResponse
+            });
+            
             if (char.properties.write || char.properties.writeWithoutResponse) {
               this.characteristic = char;
-              console.log('Found writable characteristic:', char.uuid);
+              console.log(`✓ Using characteristic: ${char.uuid}`);
               return true;
             }
           }
         } catch (e) {
-          console.log('Error getting characteristics for service:', service.uuid);
+          console.warn(`Error checking service ${service.uuid}:`, e);
         }
       }
 
-      throw new Error('No writable characteristic found');
-    } catch (error) {
+      throw new Error('Tidak ditemukan characteristic yang bisa ditulis');
+    } catch (error: any) {
       console.error('Failed to connect to printer:', error);
+      
+      // Provide specific error messages for mobile users
+      if (error.message?.includes('User cancelled')) {
+        console.error('User cancelled device selection');
+      } else if (error.message?.includes('Bluetooth adapter not available')) {
+        console.error('Bluetooth tidak aktif di perangkat');
+      } else if (error.message?.includes('not supported')) {
+        console.error('Web Bluetooth tidak didukung. Buka chrome://flags dan aktifkan "Experimental Web Platform features"');
+      }
+      
       return false;
     }
   }
@@ -115,22 +174,38 @@ export class ThermalPrinter {
       const data = encoder.encode(commands);
       
       if (this.characteristic) {
-        // Split data into chunks of 512 bytes or less
-        const chunkSize = 512;
+        // Use smaller chunks for mobile stability (Android Chrome works better with smaller packets)
+        const chunkSize = 20; // Smaller chunks for better mobile compatibility
         const chunks: Uint8Array[] = [];
         
         for (let i = 0; i < data.length; i += chunkSize) {
           chunks.push(data.slice(i, i + chunkSize));
         }
         
-        // Send each chunk with a small delay
-        for (const chunk of chunks) {
-          await this.characteristic.writeValue(chunk);
-          // Small delay between chunks to ensure proper transmission
-          await new Promise(resolve => setTimeout(resolve, 50));
+        console.log(`Sending ${data.length} bytes in ${chunks.length} chunks`);
+        
+        // Send each chunk with appropriate delay for mobile
+        for (let i = 0; i < chunks.length; i++) {
+          const chunk = chunks[i];
+          try {
+            if (this.characteristic.properties.writeWithoutResponse) {
+              await this.characteristic.writeValue(chunk);
+            } else {
+              await this.characteristic.writeValue(chunk);
+            }
+            
+            // Progressive delay - longer delay for mobile devices
+            const delay = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? 100 : 50;
+            if (i < chunks.length - 1) { // Don't delay after the last chunk
+              await new Promise(resolve => setTimeout(resolve, delay));
+            }
+          } catch (chunkError) {
+            console.error(`Error sending chunk ${i + 1}/${chunks.length}:`, chunkError);
+            throw chunkError;
+          }
         }
         
-        console.log(`Print command sent successfully in ${chunks.length} chunks`);
+        console.log(`✓ Print command sent successfully in ${chunks.length} chunks`);
         return true;
       }
       

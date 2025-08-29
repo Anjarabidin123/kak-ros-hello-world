@@ -7,6 +7,7 @@ import { Printer, Download, Bluetooth, ArrowLeft } from 'lucide-react';
 import { thermalPrinter } from '@/lib/thermal-printer';
 import { formatThermalReceipt, formatPrintReceipt } from '@/lib/receipt-formatter';
 import { toast } from 'sonner';
+import { BluetoothInstructions } from './BluetoothInstructions';
 
 interface ReceiptProps {
   receipt: ReceiptType;
@@ -175,7 +176,9 @@ export const Receipt = ({ receipt, formatPrice, onBack }: ReceiptProps) => {
       </CardContent>
 
       <div className="p-4 space-y-2">
-        <div className="bg-muted/50 p-3 rounded-lg text-center text-sm text-muted-foreground mb-3">
+        <BluetoothInstructions />
+        
+        <div className="bg-muted/50 p-3 rounded-lg text-center text-sm text-muted-foreground mb-3 mt-3">
           Tekan <kbd className="bg-background px-2 py-1 rounded border">Enter</kbd> untuk print otomatis
         </div>
         
