@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Printer, Download, Bluetooth, ArrowLeft } from 'lucide-react';
-import { thermalPrinter } from '@/lib/thermal-printer';
+import { hybridThermalPrinter } from '@/lib/hybrid-thermal-printer';
 import { formatThermalReceipt, formatPrintReceipt } from '@/lib/receipt-formatter';
 import { toast } from 'sonner';
 import { BluetoothInstructions } from './BluetoothInstructions';
@@ -41,10 +41,10 @@ export const Receipt = ({ receipt, formatPrice, onBack }: ReceiptProps) => {
   const handleThermalPrint = async () => {
     try {
       const thermalContent = formatThermalReceipt(receipt, formatPrice);
-      const success = await thermalPrinter.print(thermalContent);
+      const success = await hybridThermalPrinter.print(thermalContent);
       
       if (success) {
-        toast.success('Nota berhasil dicetak!');
+        toast.success(`Nota berhasil dicetak via ${hybridThermalPrinter.getPlatformInfo()}!`);
       } else {
         toast.error('Gagal mencetak nota. Pastikan printer terhubung.');
       }
@@ -56,9 +56,9 @@ export const Receipt = ({ receipt, formatPrice, onBack }: ReceiptProps) => {
 
   const handleConnectPrinter = async () => {
     try {
-      const connected = await thermalPrinter.connect();
+      const connected = await hybridThermalPrinter.connect();
       if (connected) {
-        toast.success('Printer bluetooth terhubung!');
+        toast.success(`Printer ${hybridThermalPrinter.getPlatformInfo()} terhubung!`);
       } else {
         toast.error('Gagal menghubungkan printer bluetooth.');
       }
@@ -196,7 +196,7 @@ export const Receipt = ({ receipt, formatPrice, onBack }: ReceiptProps) => {
           onClick={handleConnectPrinter}
         >
           <Bluetooth className="w-4 h-4 mr-2" />
-          {thermalPrinter.isConnected() ? 'Printer Terhubung' : 'Hubungkan Bluetooth'}
+          {hybridThermalPrinter.isConnected() ? 'Printer Terhubung' : 'Hubungkan Bluetooth'}
         </Button>
         
         <Button 
