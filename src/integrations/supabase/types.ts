@@ -26,6 +26,7 @@ export type Database = {
           sell_price: number
           stock: number
           updated_at: string
+          user_id: string
         }
         Insert: {
           barcode?: string | null
@@ -38,6 +39,7 @@ export type Database = {
           sell_price?: number
           stock?: number
           updated_at?: string
+          user_id: string
         }
         Update: {
           barcode?: string | null
@@ -50,39 +52,40 @@ export type Database = {
           sell_price?: number
           stock?: number
           updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
       profiles: {
         Row: {
+          admin_password: string | null
           created_at: string
           display_name: string | null
           email: string | null
-          full_name: string | null
           id: string
-          is_admin: boolean | null
+          store_name: string | null
           updated_at: string
           user_id: string
           username: string | null
         }
         Insert: {
+          admin_password?: string | null
           created_at?: string
           display_name?: string | null
           email?: string | null
-          full_name?: string | null
           id?: string
-          is_admin?: boolean | null
+          store_name?: string | null
           updated_at?: string
           user_id: string
           username?: string | null
         }
         Update: {
+          admin_password?: string | null
           created_at?: string
           display_name?: string | null
           email?: string | null
-          full_name?: string | null
           id?: string
-          is_admin?: boolean | null
+          store_name?: string | null
           updated_at?: string
           user_id?: string
           username?: string | null
@@ -93,38 +96,35 @@ export type Database = {
         Row: {
           cost_price: number
           created_at: string
+          final_price: number | null
           id: string
-          product_id: string | null
+          product_id: string
           product_name: string
-          profit: number
           quantity: number
           receipt_id: string
-          total_price: number
-          unit_price: number
+          sell_price: number
         }
         Insert: {
-          cost_price?: number
+          cost_price: number
           created_at?: string
+          final_price?: number | null
           id?: string
-          product_id?: string | null
+          product_id: string
           product_name: string
-          profit?: number
-          quantity?: number
+          quantity: number
           receipt_id: string
-          total_price?: number
-          unit_price?: number
+          sell_price: number
         }
         Update: {
           cost_price?: number
           created_at?: string
+          final_price?: number | null
           id?: string
-          product_id?: string | null
+          product_id?: string
           product_name?: string
-          profit?: number
           quantity?: number
           receipt_id?: string
-          total_price?: number
-          unit_price?: number
+          sell_price?: number
         }
         Relationships: [
           {
@@ -148,96 +148,60 @@ export type Database = {
           created_at: string
           discount: number
           id: string
-          invoice_number: string
           payment_method: string | null
           profit: number
+          receipt_number: string
           subtotal: number
           total: number
-          updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
           discount?: number
           id?: string
-          invoice_number: string
           payment_method?: string | null
           profit?: number
+          receipt_number: string
           subtotal?: number
           total?: number
-          updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
           discount?: number
           id?: string
-          invoice_number?: string
           payment_method?: string | null
           profit?: number
+          receipt_number?: string
           subtotal?: number
           total?: number
-          updated_at?: string
           user_id?: string
         }
         Relationships: []
       }
-      shopping_items: {
+      shopping_lists: {
         Row: {
           created_at: string
-          current_stock: number | null
           id: string
-          is_completed: boolean
+          items: Json
           name: string
-          notes: string | null
-          quantity: number | null
-          unit: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
-          current_stock?: number | null
           id?: string
-          is_completed?: boolean
+          items?: Json
           name: string
-          notes?: string | null
-          quantity?: number | null
-          unit?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
-          current_stock?: number | null
           id?: string
-          is_completed?: boolean
+          items?: Json
           name?: string
-          notes?: string | null
-          quantity?: number | null
-          unit?: string | null
           updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      user_roles: {
-        Row: {
-          created_at: string
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
         Relationships: []
@@ -248,29 +212,12 @@ export type Database = {
     }
     Functions: {
       generate_invoice_number: {
-        Args: Record<PropertyKey, never>
+        Args: { is_manual?: boolean }
         Returns: string
-      }
-      get_user_by_username_or_email: {
-        Args: { identifier: string }
-        Returns: {
-          email: string
-          full_name: string
-          user_id: string
-          username: string
-        }[]
-      }
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
       }
     }
     Enums: {
-      app_role: "admin" | "kasir"
-      product_category: "fotocopy" | "atk" | "pramuka" | "lainnya"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -397,9 +344,6 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {
-      app_role: ["admin", "kasir"],
-      product_category: ["fotocopy", "atk", "pramuka", "lainnya"],
-    },
+    Enums: {},
   },
 } as const
