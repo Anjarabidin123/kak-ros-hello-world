@@ -121,15 +121,16 @@ export const useSupabasePOS = () => {
     try {
       const { error } = await supabase
         .from('products')
-        .insert({
+        .insert([{
           name: productData.name,
           cost_price: productData.costPrice,
           sell_price: productData.sellPrice,
           stock: productData.stock,
           barcode: productData.barcode,
           category: productData.category,
-          is_photocopy: productData.isPhotocopy
-        });
+          is_photocopy: productData.isPhotocopy,
+          user_id: user.id
+        }]);
 
       if (error) throw error;
       toast.success('Produk berhasil ditambahkan');
@@ -163,7 +164,7 @@ export const useSupabasePOS = () => {
     }
   };
 
-  const processTransaction = async (cart: CartItem[], paymentMethod?: string, discount: number = 0): Promise<Receipt | null> => {
+  const processTransaction = async (cart: CartItem[], paymentMethod?: string, discount: number = 0, isManual: boolean = false): Promise<Receipt | null> => {
     if (!user || cart.length === 0) return null;
 
     try {
@@ -175,6 +176,12 @@ export const useSupabasePOS = () => {
         sum + ((item.finalPrice || item.product.sellPrice) - item.product.costPrice) * item.quantity, 0
       );
 
+    // Generate invoice number using the new function
+    const { data: invoiceData, error: invoiceError } = await supabase
+      .rpc('generate_invoice_number', { is_manual: isManual });
+    
+    if (invoiceError) throw invoiceError;
+
       // Create receipt
       const { data: receiptData, error: receiptError } = await supabase
         .from('receipts')
@@ -185,7 +192,7 @@ export const useSupabasePOS = () => {
           total,
           profit,
           payment_method: paymentMethod,
-          invoice_number: `INV-${Date.now()}`
+          receipt_number: invoiceData
         })
         .select()
         .single();
@@ -198,10 +205,9 @@ export const useSupabasePOS = () => {
         product_id: item.product.id,
         product_name: item.product.name,
         quantity: item.quantity,
-        unit_price: item.product.sellPrice,
+        sell_price: item.product.sellPrice,
         cost_price: item.product.costPrice,
-        total_price: (item.finalPrice || item.product.sellPrice) * item.quantity,
-        profit: ((item.finalPrice || item.product.sellPrice) - item.product.costPrice) * item.quantity
+        final_price: item.finalPrice || item.product.sellPrice
       }));
 
       const { error: itemsError } = await supabase
@@ -272,8 +278,8 @@ export const useSupabasePOS = () => {
     setCart([]);
   };
 
-  const processTransactionWrapper = async (paymentMethod?: string, discount: number = 0): Promise<Receipt | null> => {
-    const receipt = await processTransaction(cart, paymentMethod, discount);
+  const processTransactionWrapper = async (paymentMethod?: string, discount: number = 0, isManual: boolean = false): Promise<Receipt | null> => {
+    const receipt = await processTransaction(cart, paymentMethod, discount, isManual);
     if (receipt) {
       clearCart();
     }
@@ -299,7 +305,7 @@ export const useSupabasePOS = () => {
     updateCartQuantity,
     removeFromCart,
     clearCart,
-    processTransaction: processTransactionWrapper,
+  processTransaction: processTransactionWrapper,
     formatPrice,
   };
 };

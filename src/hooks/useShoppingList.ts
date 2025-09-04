@@ -27,14 +27,17 @@ export const useShoppingList = () => {
     
     try {
       const { data, error } = await supabase
-        .from('shopping_items')
+        .from('shopping_lists')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
       const formattedItems: ShoppingItem[] = data.map(item => ({
-        ...item,
+        id: item.id,
+        user_id: item.user_id,
+        name: item.name,
+        is_completed: false, // Default value since shopping_lists doesn't have this field
         created_at: new Date(item.created_at),
         updated_at: new Date(item.updated_at)
       }));
@@ -55,13 +58,13 @@ export const useShoppingList = () => {
     loadItems();
 
     const channel = supabase
-      .channel('shopping_items_changes')
+      .channel('shopping_lists_changes')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'shopping_items'
+          table: 'shopping_lists'
         },
         (payload) => {
           if (payload.eventType === 'INSERT') {
@@ -100,10 +103,16 @@ export const useShoppingList = () => {
 
     try {
       const { error } = await supabase
-        .from('shopping_items')
+        .from('shopping_lists')
         .insert([{
-          ...itemData,
-          user_id: user.id
+          name: itemData.name,
+          user_id: user.id,
+          items: [{
+            name: itemData.name,
+            quantity: itemData.quantity || 1,
+            unit: itemData.unit || '',
+            is_completed: itemData.is_completed || false
+          }]
         }]);
 
       if (error) throw error;
@@ -117,7 +126,7 @@ export const useShoppingList = () => {
   const updateItem = async (id: string, updates: Partial<Omit<ShoppingItem, 'created_at' | 'updated_at'>>) => {
     try {
       const { error } = await supabase
-        .from('shopping_items')
+        .from('shopping_lists')
         .update(updates)
         .eq('id', id);
 
@@ -131,7 +140,7 @@ export const useShoppingList = () => {
   const removeItem = async (id: string) => {
     try {
       const { error } = await supabase
-        .from('shopping_items')
+        .from('shopping_lists')
         .delete()
         .eq('id', id);
 
@@ -155,7 +164,7 @@ export const useShoppingList = () => {
     
     try {
       const { error } = await supabase
-        .from('shopping_items')
+        .from('shopping_lists')
         .delete()
         .in('id', completedItems.map(item => item.id));
 

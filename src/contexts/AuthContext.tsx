@@ -66,7 +66,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signInWithUsername = async (username: string, password: string) => {
     // Use RPC with SECURITY DEFINER to bypass RLS when not authenticated
-    const { data, error } = await supabase.rpc('get_user_by_username_or_email', {
+    const { data, error } = await supabase.rpc('get_user_by_username_or_email' as any, {
       identifier: username,
     });
 

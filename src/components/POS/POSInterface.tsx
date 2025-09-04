@@ -523,7 +523,11 @@ Profit: ${formatPrice(receipt.profit)}
               </TabsList>
               
               <TabsContent value="add-product" className="space-y-4">
-                <AddProductForm onAddProduct={addProduct} onClose={() => {}} />
+                <AddProductForm 
+                  onAddProduct={addProduct} 
+                  onClose={() => {}} 
+                  existingProducts={products} 
+                />
               </TabsContent>
               
               <TabsContent value="stock-management" className="space-y-4">

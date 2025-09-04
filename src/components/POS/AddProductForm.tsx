@@ -8,13 +8,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, X } from 'lucide-react';
 import { Product } from '@/types/pos';
 import { QuantitySelector } from './QuantitySelector';
+import { Autocomplete } from '@/components/ui/autocomplete';
+import { toast } from 'sonner';
 
 interface AddProductFormProps {
   onAddProduct: (product: Omit<Product, 'id'>) => void;
   onClose: () => void;
+  existingProducts?: Product[];
 }
 
-export const AddProductForm = ({ onAddProduct, onClose }: AddProductFormProps) => {
+export const AddProductForm = ({ onAddProduct, onClose, existingProducts = [] }: AddProductFormProps) => {
   const [formData, setFormData] = useState({
     name: '',
     costPrice: '',
@@ -30,6 +33,16 @@ export const AddProductForm = ({ onAddProduct, onClose }: AddProductFormProps) =
     e.preventDefault();
     
     if (!formData.name || !formData.sellPrice || !formData.costPrice) {
+      return;
+    }
+
+    // Check if product already exists
+    const existingProduct = existingProducts.find(p => 
+      p.name.toLowerCase() === formData.name.toLowerCase()
+    );
+    
+    if (existingProduct) {
+      toast.error(`Produk "${formData.name}" sudah ada! Pilih dari daftar yang tersedia.`);
       return;
     }
 
@@ -80,13 +93,29 @@ export const AddProductForm = ({ onAddProduct, onClose }: AddProductFormProps) =
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="name">Nama Produk *</Label>
-                  <Input
-                    id="name"
-                    type="text"
+                  <Autocomplete
+                    items={existingProducts.map(p => ({ 
+                      value: p.id, 
+                      label: p.name 
+                    }))}
+                    placeholder="Masukkan atau pilih nama produk"
+                    emptyMessage="Tidak ada produk yang cocok. Ketik nama baru untuk membuat produk baru."
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Masukkan nama produk"
-                    required
+                    onValueChange={(value) => setFormData({ ...formData, name: value })}
+                    onSelect={(item) => {
+                      const product = existingProducts.find(p => p.id === item.value);
+                      if (product) {
+                        setFormData({
+                          name: product.name,
+                          costPrice: product.costPrice.toString(),
+                          sellPrice: product.sellPrice.toString(),
+                          stock: product.stock.toString(),
+                          category: product.category || '',
+                          isPhotocopy: product.isPhotocopy || false,
+                        });
+                        setStockQuantity(product.stock);
+                      }
+                    }}
                   />
                 </div>
                 
@@ -180,13 +209,28 @@ export const AddProductForm = ({ onAddProduct, onClose }: AddProductFormProps) =
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="serviceName">Nama Layanan *</Label>
-                  <Input
-                    id="serviceName"
-                    type="text"
+                  <Autocomplete
+                    items={existingProducts.filter(p => !p.isPhotocopy).map(p => ({ 
+                      value: p.id, 
+                      label: p.name 
+                    }))}
+                    placeholder="Masukkan atau pilih nama layanan"
+                    emptyMessage="Tidak ada layanan yang cocok. Ketik nama baru untuk membuat layanan baru."
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Masukkan nama layanan"
-                    required
+                    onValueChange={(value) => setFormData({ ...formData, name: value })}
+                    onSelect={(item) => {
+                      const product = existingProducts.find(p => p.id === item.value);
+                      if (product) {
+                        setFormData({
+                          name: product.name,
+                          costPrice: product.costPrice.toString(),
+                          sellPrice: product.sellPrice.toString(),
+                          stock: product.stock.toString(),
+                          category: product.category || '',
+                          isPhotocopy: product.isPhotocopy || false,
+                        });
+                      }
+                    }}
                   />
                 </div>
                 

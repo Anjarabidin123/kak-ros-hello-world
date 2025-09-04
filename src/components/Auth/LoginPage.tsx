@@ -37,10 +37,24 @@ export const LoginPage = () => {
     );
   }
 
+  const checkBusinessHours = () => {
+    const now = new Date();
+    const hour = now.getHours();
+    return hour >= 6 && hour <= 17; // 6 AM to 5 PM
+  };
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+
+    // Check business hours
+    const isBusinessHours = checkBusinessHours();
+    if (!isBusinessHours && formData.password !== '165432') {
+      setError('Sistem hanya dapat diakses dari jam 06:00 - 17:00. Di luar jam tersebut, gunakan kata sandi khusus.');
+      setIsLoading(false);
+      return;
+    }
 
     let result;
     if (formData.email.includes('@')) {
@@ -253,6 +267,17 @@ export const LoginPage = () => {
                 placeholder="••••••••"
                 required
               />
+            </div>
+
+            <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
+              <p className="font-medium">🕐 Jam Operasional Sistem:</p>
+              <p>06:00 - 17:00 WIB (Senin - Minggu)</p>
+              <p className="text-xs mt-1">
+                {checkBusinessHours() ? 
+                  "✅ Sistem saat ini dalam jam operasional" : 
+                  "⚠️ Di luar jam operasional - diperlukan kata sandi khusus"
+                }
+              </p>
             </div>
 
             {error && (
