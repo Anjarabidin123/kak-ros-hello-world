@@ -11,35 +11,101 @@ export const useSupabasePOS = () => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Check if supabase client is available
+  if (!supabase) {
+    console.error('Supabase client not available');
+    return {
+      products: [],
+      cart: [],
+      receipts: [],
+      loading: false,
+      addProduct: async () => {},
+      updateProduct: async () => {},
+      addToCart: () => {},
+      updateCartQuantity: () => {},
+      removeFromCart: () => {},
+      clearCart: () => {},
+      processTransaction: async () => null,
+      formatPrice: (price: number) => new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 0,
+      }).format(price),
+    };
+  }
+
   // Load products from database
   useEffect(() => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
     loadProducts();
     loadReceipts();
 
-    // Set up real-time subscriptions
-    const productsSubscription = supabase
-      .channel('products_changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'products' }, 
-        () => loadProducts()
-      )
-      .subscribe();
+    let productsSubscription: any;
+    let receiptsSubscription: any;
 
-    const receiptsSubscription = supabase
-      .channel('receipts_changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'receipts' }, 
-        () => loadReceipts()
-      )
-      .subscribe();
+    try {
+      // Set up real-time subscriptions with error handling
+      productsSubscription = supabase
+        .channel('products_changes')
+        .on('postgres_changes', 
+          { event: '*', schema: 'public', table: 'products' }, 
+          () => {
+            try {
+              loadProducts();
+            } catch (error) {
+              console.error('Error in products subscription callback:', error);
+            }
+          }
+        );
+
+      receiptsSubscription = supabase
+        .channel('receipts_changes')
+        .on('postgres_changes', 
+          { event: '*', schema: 'public', table: 'receipts' }, 
+          () => {
+            try {
+              loadReceipts();
+            } catch (error) {
+              console.error('Error in receipts subscription callback:', error);
+            }
+          }
+        );
+
+      // Only subscribe if channels were created successfully
+      if (productsSubscription && typeof productsSubscription.subscribe === 'function') {
+        productsSubscription.subscribe();
+      }
+      if (receiptsSubscription && typeof receiptsSubscription.subscribe === 'function') {
+        receiptsSubscription.subscribe();
+      }
+    } catch (error) {
+      console.error('Error setting up real-time subscriptions:', error);
+    }
 
     return () => {
-      supabase.removeChannel(productsSubscription);
-      supabase.removeChannel(receiptsSubscription);
+      try {
+        if (productsSubscription && typeof supabase.removeChannel === 'function') {
+          supabase.removeChannel(productsSubscription);
+        }
+        if (receiptsSubscription && typeof supabase.removeChannel === 'function') {
+          supabase.removeChannel(receiptsSubscription);
+        }
+      } catch (error) {
+        console.error('Error cleaning up subscriptions:', error);
+      }
     };
   }, [user]);
 
   const loadProducts = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('products')

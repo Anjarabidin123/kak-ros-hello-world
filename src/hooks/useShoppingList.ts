@@ -21,6 +21,20 @@ export const useShoppingList = () => {
   const [items, setItems] = useState<ShoppingItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Check if supabase client is available
+  if (!supabase) {
+    console.error('Supabase client not available');
+    return {
+      items: [],
+      loading: false,
+      addItem: async () => {},
+      updateItem: async () => {},
+      removeItem: async () => {},
+      toggleComplete: async () => {},
+      clearCompleted: async () => {},
+    };
+  }
+
   // Load shopping items
   const loadItems = async () => {
     if (!user) return;
