@@ -21,23 +21,55 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+    let subscription: any;
+
+    try {
+      // Set up auth state listener FIRST with error handling
+      const authResult = supabase?.auth?.onAuthStateChange?.(
+        (event, session) => {
+          try {
+            setSession(session);
+            setUser(session?.user ?? null);
+            setLoading(false);
+          } catch (error) {
+            console.error('Error in auth state change callback:', error);
+            setLoading(false);
+          }
+        }
+      );
+
+      if (authResult?.data?.subscription) {
+        subscription = authResult.data.subscription;
+      }
+    } catch (error) {
+      console.error('Error setting up auth subscription:', error);
+      setLoading(false);
+    }
+
+    // THEN check for existing session
+    try {
+      supabase?.auth?.getSession?.()?.then(({ data: { session } }) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
-      }
-    );
-
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+      }).catch(error => {
+        console.error('Error getting session:', error);
+        setLoading(false);
+      });
+    } catch (error) {
+      console.error('Error in getSession call:', error);
       setLoading(false);
-    });
+    }
 
-    return () => subscription.unsubscribe();
+    return () => {
+      try {
+        if (subscription && typeof subscription.unsubscribe === 'function') {
+          subscription.unsubscribe();
+        }
+      } catch (error) {
+        console.error('Error unsubscribing from auth:', error);
+      }
+    };
   }, []);
 
   const signUp = async (email: string, username: string, password: string) => {
