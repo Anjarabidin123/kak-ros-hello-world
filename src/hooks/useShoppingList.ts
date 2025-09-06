@@ -74,13 +74,19 @@ export const useShoppingList = () => {
 
   // Real-time subscription
   useEffect(() => {
+    console.log('useShoppingList useEffect: Starting', { user: !!user, supabase: !!supabase });
+    
     if (!user) {
+      console.log('No user in shopping list, setting loading to false');
       setLoading(false);
       return;
     }
 
     loadItems();
 
+    // Temporarily disable real-time subscriptions to isolate the error
+    console.log('Skipping shopping list subscriptions for debugging');
+    /*
     let channel: any;
     
     try {
@@ -137,6 +143,7 @@ export const useShoppingList = () => {
         console.error('Error cleaning up subscription:', error);
       }
     };
+    */
   }, [user]);
 
   const addItem = async (itemData: Omit<ShoppingItem, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {

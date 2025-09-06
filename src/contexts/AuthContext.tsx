@@ -21,12 +21,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log('AuthContext useEffect: Starting auth setup', { supabase: !!supabase });
+    
     let subscription: any;
 
     try {
-      // Set up auth state listener FIRST with error handling
-      const authResult = supabase?.auth?.onAuthStateChange?.(
+      // Check if supabase and auth are available
+      if (!supabase || !supabase.auth) {
+        console.error('Supabase or auth not available');
+        setLoading(false);
+        return;
+      }
+
+      console.log('Setting up auth state listener');
+      
+      // Set up auth state listener with additional safety checks
+      const authResult = supabase.auth.onAuthStateChange(
         (event, session) => {
+          console.log('Auth state change:', event, !!session);
           try {
             setSession(session);
             setUser(session?.user ?? null);
@@ -38,17 +50,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       );
 
+      console.log('Auth result:', authResult);
+
       if (authResult?.data?.subscription) {
         subscription = authResult.data.subscription;
+        console.log('Auth subscription created successfully');
       }
     } catch (error) {
       console.error('Error setting up auth subscription:', error);
       setLoading(false);
     }
 
-    // THEN check for existing session
+    // Get existing session
     try {
-      supabase?.auth?.getSession?.()?.then(({ data: { session } }) => {
+      console.log('Getting existing session');
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        console.log('Got existing session:', !!session);
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
@@ -62,9 +79,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     return () => {
+      console.log('AuthContext cleanup');
       try {
         if (subscription && typeof subscription.unsubscribe === 'function') {
           subscription.unsubscribe();
+          console.log('Auth subscription unsubscribed successfully');
         }
       } catch (error) {
         console.error('Error unsubscribing from auth:', error);

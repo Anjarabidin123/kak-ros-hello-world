@@ -36,7 +36,10 @@ export const useSupabasePOS = () => {
 
   // Load products from database
   useEffect(() => {
+    console.log('useSupabasePOS useEffect: Starting', { user: !!user, supabase: !!supabase });
+    
     if (!user) {
+      console.log('No user, setting loading to false');
       setLoading(false);
       return;
     }
@@ -44,6 +47,9 @@ export const useSupabasePOS = () => {
     loadProducts();
     loadReceipts();
 
+    // Temporarily disable real-time subscriptions to isolate the error
+    console.log('Skipping real-time subscriptions for debugging');
+    /*
     let productsSubscription: any;
     let receiptsSubscription: any;
 
@@ -98,6 +104,7 @@ export const useSupabasePOS = () => {
         console.error('Error cleaning up subscriptions:', error);
       }
     };
+    */
   }, [user]);
 
   const loadProducts = async () => {
