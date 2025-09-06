@@ -60,45 +60,68 @@ export const useShoppingList = () => {
 
   // Real-time subscription
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
     loadItems();
 
-    const channel = supabase
-      .channel('shopping_lists_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'shopping_lists'
-        },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            const newItem: ShoppingItem = {
-              ...payload.new as any,
-              created_at: new Date(payload.new.created_at),
-              updated_at: new Date(payload.new.updated_at)
-            };
-            setItems(prev => [newItem, ...prev.filter(item => item.id !== newItem.id)]);
-          } else if (payload.eventType === 'UPDATE') {
-            const updatedItem: ShoppingItem = {
-              ...payload.new as any,
-              created_at: new Date(payload.new.created_at),
-              updated_at: new Date(payload.new.updated_at)
-            };
-            setItems(prev => prev.map(item => 
-              item.id === updatedItem.id ? updatedItem : item
-            ));
-          } else if (payload.eventType === 'DELETE') {
-            setItems(prev => prev.filter(item => item.id !== payload.old.id));
+    let channel: any;
+    
+    try {
+      channel = supabase
+        .channel('shopping_lists_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'shopping_lists'
+          },
+          (payload) => {
+            try {
+              if (payload.eventType === 'INSERT') {
+                const newItem: ShoppingItem = {
+                  ...payload.new as any,
+                  created_at: new Date(payload.new.created_at),
+                  updated_at: new Date(payload.new.updated_at)
+                };
+                setItems(prev => [newItem, ...prev.filter(item => item.id !== newItem.id)]);
+              } else if (payload.eventType === 'UPDATE') {
+                const updatedItem: ShoppingItem = {
+                  ...payload.new as any,
+                  created_at: new Date(payload.new.created_at),
+                  updated_at: new Date(payload.new.updated_at)
+                };
+                setItems(prev => prev.map(item => 
+                  item.id === updatedItem.id ? updatedItem : item
+                ));
+              } else if (payload.eventType === 'DELETE') {
+                setItems(prev => prev.filter(item => item.id !== payload.old.id));
+              }
+            } catch (error) {
+              console.error('Error processing real-time update:', error);
+            }
           }
-        }
-      )
-      .subscribe();
+        );
+
+      // Only subscribe if channel was created successfully
+      if (channel && typeof channel.subscribe === 'function') {
+        channel.subscribe();
+      }
+    } catch (error) {
+      console.error('Error setting up real-time subscription:', error);
+    }
 
     return () => {
-      supabase.removeChannel(channel);
+      try {
+        if (channel && typeof supabase.removeChannel === 'function') {
+          supabase.removeChannel(channel);
+        }
+      } catch (error) {
+        console.error('Error cleaning up subscription:', error);
+      }
     };
   }, [user]);
 
