@@ -33,14 +33,21 @@ export const useShoppingList = () => {
 
       if (error) throw error;
 
-      const formattedItems: ShoppingItem[] = data.map(item => ({
-        id: item.id,
-        user_id: item.user_id,
-        name: item.name,
-        is_completed: false, // Default value since shopping_lists doesn't have this field
-        created_at: new Date(item.created_at),
-        updated_at: new Date(item.updated_at)
-      }));
+      const formattedItems: ShoppingItem[] = data.flatMap(list => {
+        const items = Array.isArray(list.items) ? list.items : [];
+        return items.map((item: any, index: number) => ({
+          id: `${list.id}-${index}`,
+          user_id: list.user_id,
+          name: item.name || list.name,
+          quantity: item.quantity || 1,
+          unit: item.unit || '',
+          current_stock: item.current_stock || 0,
+          notes: item.notes || '',
+          is_completed: item.is_completed || false,
+          created_at: new Date(list.created_at),
+          updated_at: new Date(list.updated_at || list.created_at)
+        }));
+      });
 
       setItems(formattedItems);
     } catch (error: any) {
